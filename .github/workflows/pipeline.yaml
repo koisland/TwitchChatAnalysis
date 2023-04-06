@@ -1,0 +1,29 @@
+name: Workflow
+
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+  Linting:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: snakemake/snakemake-github-action@v1.24.0
+      with:
+        directory: .
+        snakefile: workflow/Snakefile
+        args: '--lint'
+
+  Dry-Run:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create empty .env to satisfy dependency.
+      run: touch .env
+    - uses: snakemake/snakemake-github-action@v1.24.0
+      with:
+        directory: .
+        snakefile: workflow/Snakefile
+        args: '-np'

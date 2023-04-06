@@ -1,0 +1,8 @@
+twitch:
+  channel:
+    - "Jerma985"
+  type: "archive"
+  format: "irc"
+  paths:
+    twitch_cred_file: ".env"
+    output_dir: "output"

@@ -1,0 +1,6 @@
+/.snakemake
+/output
+/logs
+/benchmarks
+/chats
+/.env

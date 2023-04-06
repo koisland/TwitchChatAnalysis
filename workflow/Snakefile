@@ -1,0 +1,11 @@
+# Include config file.
+configfile: "config/config.yaml"
+
+
+# Load in data rules.
+include: "rules/data.smk"
+
+
+rule all:
+    input:
+        rules.data_all.input,

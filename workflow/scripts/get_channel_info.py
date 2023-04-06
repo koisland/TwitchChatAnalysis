@@ -20,6 +20,7 @@ def get_image(url: str, output_file: str):
             shutil.copyfileobj(response.raw, out_file)
 
 
+# https://stackoverflow.com/a/46801075
 def get_valid_filename(s) -> str:
     s = str(s).strip().replace(" ", "_")
     return re.sub(r"(?u)[^-\w.]", "", s)
@@ -67,10 +68,7 @@ async def main():
 
     # Iterate through users to get info.
     async for user in twitch.get_users(logins=args.channel):
-        user_output_dir = os.path.join(
-            args.output, get_valid_filename(user.display_name)
-        )
-        user_output_emote_dir = os.path.join(user_output_dir, EMOTE_DIR)
+        user_output_emote_dir = os.path.join(args.output, EMOTE_DIR)
 
         # Make output dir for each user.
         os.makedirs(user_output_emote_dir, exist_ok=True)
@@ -84,7 +82,7 @@ async def main():
         await get_channel_vod_info(
             twitch,
             user,
-            output_file=os.path.join(user_output_dir, VOD_INFO_FILE),
+            output_file=os.path.join(args.output, VOD_INFO_FILE),
         )
 
 

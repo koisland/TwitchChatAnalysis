@@ -1,16 +1,25 @@
+import sys
 import json
 import argparse
 import subprocess
 import multiprocessing as mp
+from typing import Tuple
 
 
 def extract_twitch_chat(
     video_id: str, output_dir: str, format: str
-) -> subprocess.CompletedProcess[bytes]:
+) -> Tuple[str, subprocess.CompletedProcess[bytes]]:
     # tcd required to download vod chats.
-    return subprocess.run(
-        ["tcd", "-v", video_id, "-t", output_dir, "-f", format], shell=False
+    # Flag no-progress does not work as self.progressbar is not initialized.
+    # https://github.com/TheDrHax/Twitch-Chat-Downloader/blob/master/tcd/twitch.py#L199
+    # So we toss the output.
+    cmd = ["tcd", "-v", video_id, "-t", output_dir, "-f", format]
+    run = subprocess.run(
+        cmd,
+        shell=False,
+        stderr=subprocess.DEVNULL,
     )
+    return (video_id, run)
 
 
 def main() -> int:
@@ -34,7 +43,11 @@ def main() -> int:
     # https://dev.twitch.tv/docs/irc/tags/
     ap.add_argument("-f", "--format", default="irc", help="Chat format.")
     ap.add_argument(
-        "-p", "--processes", default=4, help="Processes to spawn each command."
+        "-p",
+        "--processes",
+        default=4,
+        type=int,
+        help="Processes to spawn each command.",
     )
 
     args = ap.parse_args()
@@ -52,8 +65,9 @@ def main() -> int:
             func=extract_twitch_chat,
             iterable=[(vod["id"], args.output_dir, args.format) for vod in vod_info],
         )
-        for res in process:
-            assert res.returncode == 0
+        for vod_id, res in process:
+            assert res.returncode == 0, f"Failed to extract chat from {vod_id}."
+            sys.stderr.write(f"Finished downloading chat for vod {vod_id}.\n")
 
     return 0
 

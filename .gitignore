@@ -4,3 +4,4 @@
 /benchmarks
 /chats
 /.env
+__pycache__

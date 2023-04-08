@@ -30,4 +30,5 @@ repos:
     hooks:
     -   id: mypy
         verbose: true
+        args: ["--check-untyped-defs"]
         additional_dependencies: [types-all]

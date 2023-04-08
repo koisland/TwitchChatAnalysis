@@ -6,3 +6,34 @@ twitch:
   paths:
     twitch_cred_file: ".env"
     output_dir: "output"
+analysis:
+  # Frequency to evaluate.
+  # https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
+  frequency:
+    - min
+  emotes:
+    channel: true
+    bttv_global: true
+    twitch_global: true
+    additional:
+      - EZ
+      - MonkaW
+      - Pog
+      - Clap
+      - OMEGALUL
+
+  top_words:
+    ignore_emotes: true
+
+  # users:
+
+
+  word_proportions:
+    ignorecase: false
+    # Name of comparison.
+    plus2minus2:
+      numerator:
+        - "+2"
+        - "OMEGALUL"
+      denominator:
+        - "-2"

@@ -15,8 +15,8 @@ rule data_all:
             os.path.join(OUTPUT_DIR, "{channel}", "vod_chats"),
             channel=TWITCH_CFG["channel"],
         ),
-        available_vods=expand(
-            os.path.join(OUTPUT_DIR, "{channel}", "available_videos.json"),
+        available_vods_by_id=expand(
+            os.path.join(OUTPUT_DIR, "{channel}", "available_videos_by_id.json"),
             channel=TWITCH_CFG["channel"],
         ),
 
@@ -26,7 +26,7 @@ rule get_channel_info:
         twitch_cred=TWITCH_CFG["paths"]["twitch_cred_file"],
     output:
         emote_dir=directory(os.path.join(OUTPUT_DIR, "{channel}", "emotes")),
-        vod_info=os.path.join(OUTPUT_DIR, "{channel}", "available_videos.json"),
+        vod_info=temp(os.path.join(OUTPUT_DIR, "{channel}", "available_videos.json")),
     conda:
         "../envs/twitch.yaml"
     params:
@@ -44,9 +44,26 @@ rule get_channel_info:
         """
 
 
-rule get_vod_chat:
+rule group_vod_info_by_id:
     input:
         vod_info=rules.get_channel_info.output.vod_info,
+    output:
+        vod_info_by_id=os.path.join(
+            OUTPUT_DIR, "{channel}", "available_videos_by_id.json"
+        ),
+    conda:
+        "../envs/twitch.yaml"
+    log:
+        "logs/twitch/group_{channel}_vod_info_by_id.log",
+    shell:
+        """
+        python workflow/scripts/group_vod_info_by_id.py -i {input} -o {output} &> {log}
+        """
+
+
+rule get_vod_chat:
+    input:
+        vod_info=rules.group_vod_info_by_id.output.vod_info_by_id,
     output:
         # We do not know the ids of vods so only a directory is created.
         vod_chat_dir=directory(os.path.join(OUTPUT_DIR, "{channel}", "vod_chats")),

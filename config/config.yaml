@@ -7,10 +7,20 @@ twitch:
     twitch_cred_file: ".env"
     output_dir: "output"
 analysis:
+  # Ignore case when evaluating patterns.
+  ignorecase: false
+
+  # Interval of time to run analysis.
+  interval: min
+
   # Frequency to evaluate.
   # https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
   frequency:
-    - min
+    patterns:
+      omegalul: "OMEGALUL"
+      plus2: "\\+2"
+      minus2: "-2"
+
   emotes:
     channel: true
     bttv_global: true
@@ -29,7 +39,6 @@ analysis:
 
 
   word_proportions:
-    ignorecase: false
     # Name of comparison.
     plus2minus2:
       numerator:

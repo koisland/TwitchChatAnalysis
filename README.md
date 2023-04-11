@@ -1,6 +1,8 @@
 # TwitchChatAnalysis
 A pipeline to analyze Twitch chat and produce visuals for VODs from a given channel.
 
+![](docs/plots/fd3_gb_plot.png)
+> Frog Detective 3 and Grotto Beasts Stream Chat Frequency
 
 ## Getting Started
 Requires having a [Twitch Developer](https://dev.twitch.tv/console) application registered and a **client id and secret**.

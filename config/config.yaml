@@ -1,25 +1,31 @@
+paths:
+  output_dir: "output"
+
 twitch:
+  paths:
+    twitch_cred_file: ".env"
+    emote_dir: "emotes"
+    vod_chat_dir: "vod_chats"
   channel:
     - "Jerma985"
   type: "archive"
   format: "irc"
-  paths:
-    twitch_cred_file: ".env"
-    output_dir: "output"
+
 analysis:
+  paths:
+    plot_dir: "plots"
   # Ignore case when evaluating patterns.
   ignorecase: false
 
   # Interval of time to run analysis.
+  # https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
   interval: min
 
-  # Frequency to evaluate.
-  # https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
   frequency:
     patterns:
       omegalul: "OMEGALUL"
       plus2: "\\+2"
-      minus2: "-2"
+      minus2: "\\-2"
 
   emotes:
     channel: true

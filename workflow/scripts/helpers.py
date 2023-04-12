@@ -1,8 +1,10 @@
 import os
 import re
+import sys
 import json
 import aiohttp  # type:ignore
 import aiofiles  # type:ignore
+from twitchAPI.twitch import GetEmotesResponse  # type: ignore
 
 from typing import Any, List, Dict, Optional
 
@@ -34,6 +36,32 @@ async def get_bttv_emotes(emote_list: List[Dict[str, str]], output_dir: str) -> 
 
         if not os.path.exists(output_file):
             await get_url_content(emote_url, output_file)
+
+
+async def get_twitch_emotes(emote_resp: GetEmotesResponse, output_dir: str) -> None:
+    """
+    Save channel emote names and images for plotting and matching later.
+    """
+    for emote_metadata in emote_resp.to_dict()["data"]:
+        # Extra emote metadata
+        # Convert emote name to filesafe name.
+        emote_name = get_valid_filename(emote_metadata["name"])
+        emote_url = emote_metadata["images"]["url_4x"]
+        output_file = os.path.join(output_dir, f"{emote_name}.png")
+
+        if not os.path.exists(output_file):
+            await get_url_content(emote_url, output_file)
+        else:
+            sys.stderr.write(
+                f"File, {output_file}, already exists for emote {emote_name} (Original: {emote_metadata['name']})\n"
+            )
+
+
+async def get_bttv_global_emotes(output_dir: str) -> None:
+    global_bttv_url = "https://api.betterttv.net/3/cached/emotes/global"
+    emotes = await get_url_content(global_bttv_url)
+    assert type(emotes) == list, f"Received invalid type {type(emotes)} for emote list."
+    return await get_bttv_emotes(emotes, output_dir=output_dir)
 
 
 # https://stackoverflow.com/a/46801075

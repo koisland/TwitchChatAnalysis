@@ -4,29 +4,11 @@ import argparse
 import asyncio
 import aiofiles
 import dotenv  # type: ignore
-from twitchAPI.twitch import Twitch, GetEmotesResponse, TwitchUser  # type: ignore
+from twitchAPI.twitch import Twitch, TwitchUser  # type: ignore
 
-from helpers import get_valid_filename, get_url_content, get_bttv_emotes
+from helpers import get_twitch_emotes, get_url_content, get_bttv_emotes
 
-EMOTE_DIR = "emotes"
 VOD_INFO_FILE = "available_videos.json"
-
-
-async def get_twitch_channel_emotes(
-    emote_resp: GetEmotesResponse, output_dir: str
-) -> None:
-    """
-    Save channel emote names and images for plotting and matching later.
-    """
-    for emote_metadata in emote_resp.to_dict()["data"]:
-        # Extra emote metadata
-        # Convert emote name to filesafe name.
-        emote_name = get_valid_filename(emote_metadata["name"])
-        emote_url = emote_metadata["images"]["url_4x"]
-        output_file = os.path.join(output_dir, f"{emote_name}.png")
-
-        if not os.path.exists(output_file):
-            await get_url_content(emote_url, output_file)
 
 
 async def get_bttv_channel_emotes(twitch_user_id: str, output_dir: str) -> None:
@@ -37,6 +19,7 @@ async def get_bttv_channel_emotes(twitch_user_id: str, output_dir: str) -> None:
 
     if json_resp:
         await get_bttv_emotes(json_resp["channelEmotes"], output_dir)
+        await get_bttv_emotes(json_resp["sharedEmotes"], output_dir)
 
 
 async def get_channel_vod_info(
@@ -59,6 +42,7 @@ async def main():
         help="Twitch identication as .env file with TWITCH_CLIENT_ID & TWITCH_CLIENT_SECRET",
     )
     ap.add_argument("-o", "--output", default="output", help="Output directory.")
+    ap.add_argument("-e", "--emotes", default="emotes", help="Emotes subdir of output.")
     ap.add_argument("-c", "--channel", nargs="+", help="Channel names.")
 
     args = ap.parse_args()
@@ -69,9 +53,8 @@ async def main():
 
     # Iterate through users to get info.
     async for user in twitch.get_users(logins=args.channel):
-        emote_dir = os.path.join(args.output, EMOTE_DIR)
-        twitch_emote_dir = os.path.join(emote_dir, "twitch")
-        bttv_emote_dir = os.path.join(emote_dir, "bttv")
+        twitch_emote_dir = os.path.join(args.emotes, "twitch")
+        bttv_emote_dir = os.path.join(args.emotes, "bttv")
 
         # Make output dir for each user.
         os.makedirs(twitch_emote_dir, exist_ok=True)
@@ -81,7 +64,7 @@ async def main():
         channel_emotes = await twitch.get_channel_emotes(user.id)
 
         async with asyncio.TaskGroup() as tg:
-            tg.create_task(get_twitch_channel_emotes(channel_emotes, twitch_emote_dir))
+            tg.create_task(get_twitch_emotes(channel_emotes, twitch_emote_dir))
             tg.create_task(get_bttv_channel_emotes(user.id, bttv_emote_dir))
             tg.create_task(
                 get_channel_vod_info(

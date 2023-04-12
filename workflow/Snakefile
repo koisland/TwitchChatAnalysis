@@ -4,8 +4,10 @@ configfile: "config/config.yaml"
 
 # Load in data rules.
 include: "rules/data.smk"
+include: "rules/eda.smk"
 
 
 rule all:
     input:
         rules.data_all.input,
+        rules.eda_all.input,

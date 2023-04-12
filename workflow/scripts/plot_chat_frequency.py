@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+import pprint
 import argparse
 import matplotlib.pyplot as plt  # type: ignore
 import matplotlib.ticker as ticker  # type: ignore
@@ -8,7 +9,7 @@ import pandas as pd  # type: ignore
 import seaborn as sns  # type: ignore
 from pandas.core.groupby.generic import DataFrameGroupBy
 
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 sns.set_theme(style="whitegrid")
 
@@ -28,8 +29,9 @@ class KeyValStringParser(argparse.Action):
         setattr(args, self.dest, d)
 
 
-def pattern_frequency(
+def pattern_counts(
     grp_df: DataFrameGroupBy,
+    name: str,
     col: str,
     pattern: str,
     pattern_desc: str,
@@ -45,7 +47,7 @@ def pattern_frequency(
         .aggregate(lambda x: x.str.contains(pattern, **params).sum())
         .reset_index()
         .rename(columns={col: "counts"})
-        .assign(**{"desc": pattern_desc})
+        .assign(**{"desc": pattern_desc, "name": name})
     )
 
 
@@ -56,10 +58,12 @@ def main() -> int:
     ap.add_argument(
         "-i",
         "--input",
-        required=True,
-        help="Input chat file as TSV file with timestamp, user, and message as fields.",
+        nargs="+",
+        help="Input chat files as TSV file with timestamp, user, and message as fields.",
     )
-    ap.add_argument("-o", "--output", required=True, help="Output plot file.")
+    ap.add_argument("-op", "--output_plot", required=True, help="Output plot file.")
+    ap.add_argument("-oc", "--output_csv", required=True, help="Output CSV file.")
+
     ap.add_argument(
         "-f",
         "--freq",
@@ -81,21 +85,25 @@ def main() -> int:
     )
 
     args = ap.parse_args()
-    sys.stderr.write(f"Args: {args}\n")
+    pprint.pprint(args.__dict__, stream=sys.stderr)
 
     return plot_chat_frequency(
-        args.input, args.output, args.freq, args.patterns, ignorecase=args.ignorecase
+        args.input,
+        args.output_csv,
+        args.output_plot,
+        args.freq,
+        args.patterns,
+        ignorecase=args.ignorecase,
     )
 
 
-def plot_chat_frequency(
+def annotate_chat_data(
     chat_file: str,
-    output_file: str,
     freq: str,
     patterns: Dict[str, str],
     *,
     ignorecase: bool = False,
-) -> int:
+) -> pd.DataFrame:
     fname, _ = os.path.splitext(os.path.basename(chat_file))
     df = pd.read_csv(chat_file, delimiter="\t")
 
@@ -105,18 +113,22 @@ def plot_chat_frequency(
     )
     df_grp_timestamp = df.groupby("timestamp")
 
-    df_message_frequency = pd.DataFrame(
-        ((grp, len(rows), "total") for grp, rows in df_grp_timestamp.groups.items()),
-        columns=["timestamp", "counts", "desc"],
+    df_message_counts = pd.DataFrame(
+        (
+            (grp, len(rows), "total", fname)
+            for grp, rows in df_grp_timestamp.groups.items()
+        ),
+        columns=["timestamp", "counts", "desc", "name"],
     )
 
-    df_message_frequency = pd.concat(
+    return pd.concat(
         [
-            df_message_frequency,
+            df_message_counts,
             # TODO: Might be worth running this step in multiple processes.
             *[
-                pattern_frequency(
+                pattern_counts(
                     df_grp_timestamp,
+                    fname,
                     "msg",
                     pattern,
                     pattern_name,
@@ -127,24 +139,49 @@ def plot_chat_frequency(
         ]
     )
 
-    sns.relplot(
-        data=df_message_frequency,
-        kind="line",
+
+def plot_chat_frequency(
+    chat_files: List[str],
+    output_csv: str,
+    output_plot: str,
+    freq: str,
+    patterns: Dict[str, str],
+    *,
+    ignorecase: bool = False,
+) -> int:
+    df_message_frequency = pd.concat(
+        annotate_chat_data(file, freq, patterns, ignorecase=ignorecase)
+        for file in chat_files
+    )
+    # Facet plot by name of stream VOD.
+    g = sns.FacetGrid(
+        df_message_frequency,
+        col="name",
+        col_wrap=2,
+        height=5.0,
+        aspect=2.0,
+    )
+    # Create lineplot with timestamp on x and message count on y.
+    # Hue of line is the pattern.
+    g.map_dataframe(
+        sns.lineplot,
         x="timestamp",
         y="counts",
         hue="desc",
-        height=8.0,
-        aspect=3.0,
     )
-    # https://stackoverflow.com/questions/45289482/how-to-plot-int-to-datetime-on-x-axis-using-seaborn
-    ax = plt.gca()
-    ax.set_title(f"Chat Frequency ({fname})")
-    label_formatter = ticker.FuncFormatter(
-        lambda x, _: pd.to_datetime(x, unit="d").strftime("%H:%M:%S")
-    )
-    ax.xaxis.set_major_formatter(label_formatter)
-    plt.xticks(rotation=50)
-    plt.savefig(output_file)
+    g.add_legend()
+
+    # Set tick labels for all axes.
+    for _, ax in g.axes_dict.items():
+        label_formatter = ticker.FuncFormatter(
+            lambda x, _: pd.to_datetime(x, unit="d").strftime("%H:%M:%S")
+        )
+        ax.xaxis.set_major_formatter(label_formatter)
+        ax.set_xticks(ticks=ax.get_xticks(), labels=ax.get_xticklabels(), rotation=50)
+
+    plt.savefig(output_plot)
+
+    df_message_frequency.to_csv(output_csv, index=False)
 
     return 0
 

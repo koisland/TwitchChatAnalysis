@@ -21,7 +21,6 @@ setup:
     - "archive"
   paths:
     twitch_cred_file: ".env"
-    output_dir: "output"
 ```
 
 ### Requirements

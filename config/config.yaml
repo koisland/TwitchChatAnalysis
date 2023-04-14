@@ -40,6 +40,7 @@ analysis:
         - "monkaS.png"
         - "AngelThump.png"
         - "*Pride.png"
+        - "D:.png"
     twitch_global:
       include_all: false
       whitelist:
@@ -64,12 +65,3 @@ analysis:
 
   # users:
   # words_per_interval
-
-  word_proportions:
-    # Name of comparison.
-    plus2minus2:
-      numerator:
-        - "+2"
-        - "OMEGALUL"
-      denominator:
-        - "-2"

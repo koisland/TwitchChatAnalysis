@@ -11,3 +11,4 @@ dependencies:
     - sklearn
     - Pillow
     - seaborn
+    - scikit-learn

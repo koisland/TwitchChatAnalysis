@@ -14,6 +14,7 @@ twitch:
 analysis:
   paths:
     plot_dir: "plots"
+
   # Ignore case when evaluating patterns.
   ignorecase: false
 
@@ -28,21 +29,41 @@ analysis:
       minus2: "\\-2"
 
   emotes:
-    channel: true
-    bttv_global: true
-    twitch_global: true
-    additional:
-      - EZ
-      - MonkaW
-      - Pog
-      - Clap
-      - OMEGALUL
+    bttv_channel:
+      include_all: true
+    twitch_channel:
+      include_all: true
+    bttv_global:
+      include_all: false
+      whitelist:
+        - "LuL.png"
+        - "monkaS.png"
+        - "AngelThump.png"
+        - "*Pride.png"
+    twitch_global:
+      include_all: false
+      whitelist:
+        # <3 is original but non-alphanum characters removed.
+        - "3.png"
+        - "4Head.png"
+        - "*Pride.png"
+        - "BatChest.png"
+        - "PogChamp.png"
+        - "BibleThump.png"
+        - "ResidentSleeper.png"
+        - "Kappa*.png"
+        - "KomodoHype.png"
+        - "Kreygasm.png"
+        - "LUL.png"
+        - "NotLikeThis.png"
+        - "Squid*.png"
+        - "Vote*.png"
 
   top_words:
     ignore_emotes: true
 
   # users:
-
+  # words_per_interval
 
   word_proportions:
     # Name of comparison.

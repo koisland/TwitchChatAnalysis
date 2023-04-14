@@ -1,7 +1,9 @@
 import os
+import glob
+from typing import Dict, List, Generator
 
 
-def get_vod_list(wildcards) -> list:
+def get_vod_list(wildcards) -> List[str]:
     """
     Get vod list of downloaded files by waiting on checkpoint get_vod_chat.
     """
@@ -12,6 +14,31 @@ def get_vod_list(wildcards) -> list:
         channel=config["twitch"]["channel"],
         vod=vods,
     )
+
+
+def get_emote_blacklist(output_emote_dirs: Dict[str, str]) -> List[str]:
+    blacklisted_files = []
+    cfg_emotes = config["analysis"]["emotes"]
+    for cfg_opt, directory in output_emote_dirs.items():
+        all_emotes = set(
+            os.path.join(directory, file) for file in os.listdir(directory)
+        )
+
+        if whitelist_emote_patterns := cfg_emotes[cfg_opt].get("whitelist"):
+            found_files = set(
+                found_file
+                for pattern in whitelist_emote_patterns
+                for found_file in glob.glob(os.path.join(directory, pattern))
+            )
+            # Add all non-matching files to be blacklisted.
+            blacklisted_files.extend(all_emotes.difference(found_files))
+        elif cfg_emotes[cfg_opt].get("include_all") is False:
+            blacklisted_files.extend(all_emotes)
+
+    # Ignore files with '-'
+    return [
+        f'"{os.path.basename(file)}"' for file in blacklisted_files if "-" not in file
+    ]
 
 
 def get_chat_freq_pattern_list_args() -> str:

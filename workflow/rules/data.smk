@@ -33,7 +33,7 @@ rule data_all:
         ),
 
 
-rule get_channel_info:
+checkpoint get_channel_info:
     input:
         twitch_cred=TWITCH_CFG["paths"]["twitch_cred_file"],
     output:
@@ -64,7 +64,7 @@ rule get_channel_info:
         """
 
 
-rule get_global_emotes:
+checkpoint get_global_emotes:
     input:
         twitch_cred=TWITCH_CFG["paths"]["twitch_cred_file"],
     output:
@@ -91,7 +91,7 @@ rule get_global_emotes:
 
 rule group_vod_info_by_id:
     input:
-        vod_info=rules.get_channel_info.output.vod_info,
+        vod_info=lambda wc: checkpoints.get_channel_info.get(**wc).output.vod_info,
     output:
         vod_info_by_id=os.path.join(OUTPUT_DIR, "{channel}", VOD_INFO_BY_ID_FILE),
     conda:

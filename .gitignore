@@ -1,5 +1,5 @@
 /.snakemake
-/output
+/output*
 /logs
 /benchmarks
 /chats

@@ -1,5 +1,5 @@
 import os
-import re
+import base64
 import sys
 import json
 import aiohttp  # type:ignore
@@ -27,34 +27,48 @@ async def get_url_content(url: str, output_file: Optional[str] = None) -> Any | 
 
 
 async def get_bttv_emotes(emote_list: List[Dict[str, str]], output_dir: str) -> None:
+    emote_name_file_map = {}
+
     for emote in emote_list:
         emote_name = emote["code"]
         emote_url = f"https://cdn.betterttv.net/emote/{emote['id']}/3x"
 
         file_ext = "gif" if emote["animated"] else "png"
-        output_file = os.path.join(output_dir, f"{emote_name}.{file_ext}")
+        emote_fname = base64.b64encode(str(emote_name).encode()).decode()
+        emote_name_file_map[emote_fname] = emote_name
+
+        output_file = os.path.join(output_dir, f"{emote_fname}.{file_ext}")
 
         if not os.path.exists(output_file):
             await get_url_content(emote_url, output_file)
+
+    with open(os.path.join(output_dir, "key.json"), mode="wt") as emote_map_file:
+        json.dump(emote_name_file_map, emote_map_file)
 
 
 async def get_twitch_emotes(emote_resp: GetEmotesResponse, output_dir: str) -> None:
     """
     Save channel emote names and images for plotting and matching later.
     """
+    emote_name_file_map = {}
     for emote_metadata in emote_resp.to_dict()["data"]:
         # Extra emote metadata
         # Convert emote name to filesafe name.
-        emote_name = get_valid_filename(emote_metadata["name"])
+        emote_fname = base64.b64encode(str(emote_metadata["name"]).encode()).decode()
+        emote_name_file_map[emote_fname] = emote_metadata["name"]
+
         emote_url = emote_metadata["images"]["url_4x"]
-        output_file = os.path.join(output_dir, f"{emote_name}.png")
+        output_file = os.path.join(output_dir, f"{emote_fname}.png")
 
         if not os.path.exists(output_file):
             await get_url_content(emote_url, output_file)
         else:
             sys.stderr.write(
-                f"File, {output_file}, already exists for emote {emote_name} (Original: {emote_metadata['name']})\n"
+                f"File, {output_file}, exists for b64 encoded emote {emote_fname} ({emote_metadata['name']})\n"
             )
+
+    with open(os.path.join(output_dir, "key.json"), mode="wt") as emote_map_file:
+        json.dump(emote_name_file_map, emote_map_file)
 
 
 async def get_bttv_global_emotes(output_dir: str) -> None:
@@ -62,9 +76,3 @@ async def get_bttv_global_emotes(output_dir: str) -> None:
     emotes = await get_url_content(global_bttv_url)
     assert type(emotes) == list, f"Received invalid type {type(emotes)} for emote list."
     return await get_bttv_emotes(emotes, output_dir=output_dir)
-
-
-# https://stackoverflow.com/a/46801075
-def get_valid_filename(s) -> str:
-    s = str(s).strip().replace(" ", "_")
-    return re.sub(r"(?u)[^-\w.]", "", s)

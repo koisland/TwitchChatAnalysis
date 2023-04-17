@@ -1,5 +1,6 @@
 import os
-import glob
+import fnmatch
+import base64
 from typing import Dict, List, Generator
 
 
@@ -20,25 +21,30 @@ def get_emote_blacklist(output_emote_dirs: Dict[str, str]) -> List[str]:
     blacklisted_files = []
     cfg_emotes = config["analysis"]["emotes"]
     for cfg_opt, directory in output_emote_dirs.items():
-        all_emotes = set(
-            os.path.join(directory, file) for file in os.listdir(directory)
-        )
+        all_emotes_w_path = {}
+        for file in os.listdir(directory):
+            fname, ext = os.path.splitext(file)
+            if ext not in (".png", ".gif"):
+                continue
+            normal_fname = base64.b64decode(fname).decode()
+            # Store the normal filename and the b64 encoded path.
+            all_emotes_w_path[normal_fname] = os.path.join(directory, file)
+
+        # Get a set of the full b64 encoded paths.
+        all_emote_paths = set(all_emotes_w_path.values())
 
         if whitelist_emote_patterns := cfg_emotes[cfg_opt].get("whitelist"):
             found_files = set(
-                found_file
+                all_emotes_w_path[found_file]
                 for pattern in whitelist_emote_patterns
-                for found_file in glob.glob(os.path.join(directory, pattern))
+                for found_file in fnmatch.filter(all_emotes_w_path.keys(), pattern)
             )
             # Add all non-matching files to be blacklisted.
-            blacklisted_files.extend(all_emotes.difference(found_files))
+            blacklisted_files.extend(all_emote_paths.difference(found_files))
         elif cfg_emotes[cfg_opt].get("include_all") is False:
             blacklisted_files.extend(all_emotes)
 
-    # Ignore files with '-'
-    return [
-        f'"{os.path.basename(file)}"' for file in blacklisted_files if "-" not in file
-    ]
+    return [f'"{os.path.basename(file)}"' for file in blacklisted_files]
 
 
 def get_chat_freq_pattern_list_args() -> str:

@@ -1,6 +1,7 @@
 import csv
 import os
 import sys
+import base64
 import pprint
 import argparse
 import matplotlib.pyplot as plt  # type: ignore
@@ -8,10 +9,11 @@ import pandas as pd  # type: ignore
 import seaborn as sns  # type: ignore
 
 from collections import Counter
-from typing import Set, List, Tuple, Optional
+from typing import Set, List, Tuple, Optional, Dict
 from matplotlib.axes import Axes  # type: ignore
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox  # type: ignore
 
+from plot_helpers import label_b64_files
 
 csv.field_size_limit(sys.maxsize)
 sns.set_theme(style="whitegrid")
@@ -23,6 +25,12 @@ def count_words(chat_tsv: str, word_set: Set[str]) -> pd.DataFrame:
     """
     with open(chat_tsv, "rt") as chat_file:
         vod_name = os.path.splitext(os.path.basename(chat_tsv))[0]
+        # Try to decode the vodname. Otherwise, use the original name.
+        try:
+            vod_name = base64.b64decode(vod_name).decode()
+        except Exception:
+            pass
+
         reader = csv.DictReader(
             chat_file,
             fieldnames=["timestamp", "user", "msg", "is_command", "is_mention"],
@@ -127,15 +135,13 @@ def plot_vod_emotes(
         emote_blacklist = set()
 
     # Create emote set and name to filename match.
-    emote_to_file = {
-        os.path.basename(os.path.splitext(emote_file)[0]): os.path.join(
-            emote_dir, emote_file
+    emote_to_file: Dict[str, str] = {}
+    for emote_dir in emote_dirs:
+        labeled_b64_files = label_b64_files(
+            emote_dir, ignore_fnames=emote_blacklist, ignore_ext=(".png", ".gif")
         )
-        for emote_dir in emote_dirs
-        for emote_file in os.listdir(emote_dir)
-        # Ignore files with hyphens.
-        if emote_file not in emote_blacklist and "-" not in emote_file
-    }
+        emote_to_file = emote_to_file | labeled_b64_files
+
     emote_set = set(emote_to_file.keys())
 
     df_emote_counts = (

@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+import base64
 import pprint
 import argparse
 import matplotlib.pyplot as plt  # type: ignore
@@ -104,7 +105,9 @@ def annotate_chat_data(
     *,
     ignorecase: bool = False,
 ) -> pd.DataFrame:
-    fname, _ = os.path.splitext(os.path.basename(chat_file))
+    b64_fname, _ = os.path.splitext(os.path.basename(chat_file))
+    fname = base64.b64decode(b64_fname).decode()
+
     df = pd.read_csv(chat_file, delimiter="\t")
 
     # Get timestamps and floor them to seconds to reduce number of points.

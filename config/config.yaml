@@ -6,10 +6,19 @@ twitch:
     twitch_cred_file: ".env"
     emote_dir: "emotes"
     vod_chat_dir: "vod_chats"
+
   channel:
     - "Jerma985"
-  type: "archive"
-  format: "irc"
+
+  sort:
+    by: "published_at"
+    desc: true
+
+  vod:
+    type: "archive"
+    top_n: 5
+
+  chat_format: "irc"
 
 analysis:
   paths:
@@ -44,8 +53,7 @@ analysis:
     twitch_global:
       include_all: false
       whitelist:
-        # <3 is original but non-alphanum characters removed.
-        - "3.png"
+        - "<3.png"
         - "4Head.png"
         - "*Pride.png"
         - "BatChest.png"

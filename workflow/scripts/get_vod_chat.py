@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import argparse
 import subprocess
 import multiprocessing as mp
@@ -7,8 +8,6 @@ import multiprocessing as mp
 from enum import Enum
 from dataclasses import dataclass, fields
 from typing import Dict
-
-from helpers import get_valid_filename
 
 
 @dataclass
@@ -26,15 +25,7 @@ class ChatMessage:
         return "@" in self.msg
 
     def as_tsv(self) -> str:
-        return "\t".join(
-            [
-                self.timestamp,
-                self.user,
-                self.msg,
-                str(self.is_command),
-                str(self.is_mention),
-            ]
-        )
+        return "\t".join([self.timestamp, self.user, self.msg])
 
 
 class Subtitle(Enum):
@@ -85,9 +76,7 @@ def convert_chat_to_tsv(input_file: str, output_file: str) -> int:
     # Read chat file and output tsv chat file.
     with vod_chat_fh as vod_chat_file, vod_chat_tsv_fh as vod_chat_tsv_file:
         # Write header.
-        tsv_fields = "\t".join(
-            [*[field.name for field in fields(ChatMessage)], "is_command", "is_mention"]
-        )
+        tsv_fields = "\t".join(field.name for field in fields(ChatMessage))
         vod_chat_tsv_file.write(f"{tsv_fields}\n")
 
         match subtitle_fmt:
@@ -147,13 +136,7 @@ def main() -> int:
         help="Input JSON file listing VOD ids and their metadata. Must include type attribute.",
     )
     ap.add_argument("-o", "--output_dir", default="output", help="Output directory.")
-    ap.add_argument(
-        "-t",
-        "--type_vod",
-        default="archive",
-        help="VOD type.",
-        choices=["archive", "highlight"],
-    )
+
     # https://dev.twitch.tv/docs/irc/tags/
     ap.add_argument("-f", "--format", default="irc", help="Chat format.")
     ap.add_argument(
@@ -170,13 +153,6 @@ def main() -> int:
         # Load vod information about channel.
         vod_info: Dict[str, Dict[str, str]] = json.load(vod_file)
 
-    # Extract vods of desired type.
-    vod_info = {
-        id: vod_data
-        for id, vod_data in vod_info.items()
-        if vod_data["type"] == args.type_vod
-    }
-
     # Run download in parallel processes.
     with mp.Pool(processes=args.processes) as pool:
         pool.starmap(
@@ -185,7 +161,8 @@ def main() -> int:
                 (
                     id,
                     args.output_dir,
-                    f"{get_valid_filename(info['title'])}.tsv",
+                    # Convert title to base64.
+                    f"{base64.b64encode(str(info['title']).encode()).decode()}.tsv",
                     args.format,
                 )
                 for id, info in vod_info.items()

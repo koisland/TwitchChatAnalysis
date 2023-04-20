@@ -6,6 +6,6 @@ dependencies:
   - pip:
     - python-dotenv
     - twitchAPI
-    - tdh-tcd
+    - chat-downloader
     - aiohttp
     - aiofiles

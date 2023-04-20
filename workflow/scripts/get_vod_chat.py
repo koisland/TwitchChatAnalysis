@@ -1,128 +1,47 @@
 import os
+import re
 import json
 import base64
 import argparse
-import subprocess
 import multiprocessing as mp
+from chat_downloader import ChatDownloader  # type: ignore
 
-from enum import Enum
-from dataclasses import dataclass, fields
 from typing import Dict
 
-
-@dataclass
-class ChatMessage:
-    timestamp: str
-    user: str
-    msg: str
-
-    @property
-    def is_command(self) -> bool:
-        return self.msg.startswith("!")
-
-    @property
-    def is_mention(self) -> bool:
-        return "@" in self.msg
-
-    def as_tsv(self) -> str:
-        return "\t".join([self.timestamp, self.user, self.msg])
+RGX_FMT_CHAT_MSG = re.compile(r"([\d:]+)\s\|\s\((.*?)\)\s(.*?):\s(.*)")
+CHAT_MSG_FIELDS = ["timestamp", "badges", "name", "msg"]
+TIMESTAMP_LEN = 8
 
 
-class Subtitle(Enum):
-    IRC = 0
-    ASS = 1
-    SRT = 2
+def extract_twitch_vod_chat(url: str, output_file: str) -> int:
+    if os.path.exists(output_file):
+        return 0
 
-    def into_chat_message(self, message: str) -> ChatMessage:
-        match self:
-            case Subtitle.ASS:
-                raise NotImplementedError
-            case Subtitle.SRT:
-                raise NotImplementedError
-            case Subtitle.IRC:
-                split_message = message.split(" ", maxsplit=2)
-                try:
-                    timestamp, user, msg = split_message
-                except ValueError:
-                    # Message is only variable input with spaces. Assume no message.
-                    msg = ""
-                    timestamp, user = split_message
-                # Strip timestamp delimiters.
-                # String user angle brackets.
-                timestamp = timestamp.strip("[]")
-                user = user.strip("<>")
+    chat = ChatDownloader().get_chat(url=url)
 
-        return ChatMessage(timestamp, user, msg)
-
-
-def into_subtitle_format(ext: str) -> Subtitle:
-    match ext.lower().strip("."):
-        case "ass":
-            return Subtitle.ASS
-        case "srt":
-            return Subtitle.SRT
-        case "irc":
-            return Subtitle.IRC
-        case _:
-            raise ValueError("Invalid subtitle format.")
-
-
-def convert_chat_to_tsv(input_file: str, output_file: str) -> int:
-    subtitle_fmt = into_subtitle_format(os.path.splitext(input_file)[1])
-
-    vod_chat_fh = open(input_file, "rt")
-    vod_chat_tsv_fh = open(output_file, "wt")
-
-    # Read chat file and output tsv chat file.
-    with vod_chat_fh as vod_chat_file, vod_chat_tsv_fh as vod_chat_tsv_file:
+    with open(output_file, "wt") as chat_file:
         # Write header.
-        tsv_fields = "\t".join(field.name for field in fields(ChatMessage))
-        vod_chat_tsv_file.write(f"{tsv_fields}\n")
+        chat_file.write("\t".join(CHAT_MSG_FIELDS) + "\n")
 
-        match subtitle_fmt:
-            case Subtitle.ASS:
-                raise NotImplementedError
-            case Subtitle.IRC:
-                chat_messages = vod_chat_file.readlines()
-            case Subtitle.SRT:
-                raise NotImplementedError
+        # Iterate through messages.
+        for msg in chat:
+            fmt_chat_msg: str = chat.format(msg)
+            # Use regex to parse message.
+            if msg_info := re.search(RGX_FMT_CHAT_MSG, fmt_chat_msg):
+                timestamp, badges, names, msg_text = list(msg_info.groups())
 
-        # Iterate through messages once.
-        for msg in chat_messages:
-            msg = msg.strip()
-            chat_msg = subtitle_fmt.into_chat_message(msg)
-            msg_row = chat_msg.as_tsv()
-            vod_chat_tsv_file.write(f"{msg_row}\n")
+                # First pad time to standardize.
+                while len(timestamp) < TIMESTAMP_LEN:
+                    # if str_time close to next time unit (hour, minute, etc.)
+                    if (len(timestamp) + 1) % 3 == 0:
+                        # Append colon.
+                        timestamp = ":" + timestamp
+                    else:
+                        # Pad with 0's.
+                        timestamp = "0" + timestamp
+                chat_file.write("\t".join([timestamp, badges, names, msg_text]) + "\n")
 
     return 0
-
-
-def extract_twitch_vod_chat(
-    video_id: str, output_dir: str, filename: str, format: str
-) -> int:
-    # tcd required to download vod chats.
-    # Flag no-progress does not work as self.progressbar is not initialized.
-    # https://github.com/TheDrHax/Twitch-Chat-Downloader/blob/master/tcd/twitch.py#L199
-    # So we toss the output.
-    vod_chat_file = os.path.join(output_dir, f"v{video_id}.{format}")
-
-    if os.path.exists(vod_chat_file) is False:
-        cmd = ["tcd", "-v", video_id, "-t", output_dir, "-f", format]
-        subprocess.run(
-            cmd,
-            shell=False,
-            stderr=subprocess.DEVNULL,
-        )
-
-    # Check vod chat file path.
-    assert os.path.exists(
-        vod_chat_file
-    ), f"VOD chat file ({vod_chat_file}) doesn't exist."
-
-    # Create TSV output file path.
-    vod_chat_tsv_file = os.path.join(output_dir, filename)
-
-    return convert_chat_to_tsv(vod_chat_file, vod_chat_tsv_file)
 
 
 def main() -> int:
@@ -137,8 +56,6 @@ def main() -> int:
     )
     ap.add_argument("-o", "--output_dir", default="output", help="Output directory.")
 
-    # https://dev.twitch.tv/docs/irc/tags/
-    ap.add_argument("-f", "--format", default="irc", help="Chat format.")
     ap.add_argument(
         "-p",
         "--processes",
@@ -153,19 +70,23 @@ def main() -> int:
         # Load vod information about channel.
         vod_info: Dict[str, Dict[str, str]] = json.load(vod_file)
 
+    # Make dirs if not exists.
+    os.makedirs(args.output_dir, exist_ok=True)
+
     # Run download in parallel processes.
     with mp.Pool(processes=args.processes) as pool:
         pool.starmap(
             func=extract_twitch_vod_chat,
             iterable=[
                 (
-                    id,
-                    args.output_dir,
+                    info["url"],
                     # Convert title to base64.
-                    f"{base64.b64encode(str(info['title']).encode()).decode()}.tsv",
-                    args.format,
+                    os.path.join(
+                        args.output_dir,
+                        f"{base64.b64encode(str(info['title']).encode()).decode()}.tsv",
+                    ),
                 )
-                for id, info in vod_info.items()
+                for _, info in vod_info.items()
             ],
         )
 

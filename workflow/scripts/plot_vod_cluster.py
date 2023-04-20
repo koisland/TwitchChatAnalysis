@@ -33,7 +33,7 @@ def count_words(chat_tsv: str, word_set: Set[str]) -> pd.DataFrame:
 
         reader = csv.DictReader(
             chat_file,
-            fieldnames=["timestamp", "user", "msg", "is_command", "is_mention"],
+            fieldnames=["timestamp", "badges", "name", "msg"],
             delimiter="\t",
         )
 

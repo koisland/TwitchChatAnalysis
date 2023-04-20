@@ -8,7 +8,6 @@ dependencies:
     - textblob
     - pandas
     - numpy
-    - sklearn
     - Pillow
     - seaborn
     - scikit-learn

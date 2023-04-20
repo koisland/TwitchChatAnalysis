@@ -14,14 +14,16 @@ def label_b64_files(
         if ext not in ignore_ext:
             continue
 
-        fname = os.path.basename(full_fname_no_ext)
-
         # Names are base64 encode so filesafe.
-        if fname not in ignore_fnames:
-            try:
-                decoded_fname = base64.b64decode(fname).decode()
-            except Exception as err:
-                sys.stderr.write(f"Cannot b64decode {fname}: {err}")
-                continue
-            fname_to_path[decoded_fname] = os.path.join(dir, full_fname)
+        if full_fname in ignore_fnames:
+            continue
+
+        fname = os.path.basename(full_fname_no_ext)
+        try:
+            decoded_fname = base64.b64decode(fname).decode()
+        except Exception as err:
+            sys.stderr.write(f"Cannot b64decode {fname}: {err}")
+            continue
+        fname_to_path[decoded_fname] = os.path.join(dir, full_fname)
+
     return fname_to_path

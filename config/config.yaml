@@ -1,5 +1,5 @@
 paths:
-  output_dir: "output"
+  output_dir: "output_test"
 
 twitch:
   paths:
@@ -16,9 +16,7 @@ twitch:
 
   vod:
     type: "archive"
-    top_n: 5
-
-  chat_format: "irc"
+    top_n: 3
 
 analysis:
   paths:
@@ -43,30 +41,10 @@ analysis:
     twitch_channel:
       include_all: true
     bttv_global:
-      include_all: false
-      whitelist:
-        - "LuL.png"
-        - "monkaS.png"
-        - "AngelThump.png"
-        - "*Pride.png"
-        - "D:.png"
+      include_all: true
+      # whitelist:
     twitch_global:
-      include_all: false
-      whitelist:
-        - "<3.png"
-        - "4Head.png"
-        - "*Pride.png"
-        - "BatChest.png"
-        - "PogChamp.png"
-        - "BibleThump.png"
-        - "ResidentSleeper.png"
-        - "Kappa*.png"
-        - "KomodoHype.png"
-        - "Kreygasm.png"
-        - "LUL.png"
-        - "NotLikeThis.png"
-        - "Squid*.png"
-        - "Vote*.png"
+      include_all: true
 
   top_words:
     ignore_emotes: true

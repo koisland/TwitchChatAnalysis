@@ -4,15 +4,18 @@ import sys
 import base64
 import pprint
 import argparse
+import numpy as np  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import matplotlib.ticker as ticker  # type: ignore
-import pandas as pd  # type: ignore
-import seaborn as sns  # type: ignore
-from pandas.core.groupby.generic import DataFrameGroupBy
+import pandas as pd
 
+from pandas.core.groupby.generic import DataFrameGroupBy
+from scipy.signal import find_peaks  # type: ignore
 from typing import Dict, Any, List
 
-sns.set_theme(style="whitegrid")
+
+SUBPLOT_HEIGHT = 7.5
+SUBPLOTS_PER_COL = 4
 
 
 class KeyValStringParser(argparse.Action):
@@ -111,7 +114,7 @@ def annotate_chat_data(
     df = pd.read_csv(chat_file, delimiter="\t")
 
     # Get timestamps and floor them to seconds to reduce number of points.
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S,%f").dt.floor(
+    df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S").dt.floor(
         freq=freq
     )
     df_grp_timestamp = df.groupby("timestamp")
@@ -143,6 +146,19 @@ def annotate_chat_data(
     )
 
 
+def tick_lbl_setter(tick_val: np.float64, df: pd.DataFrame) -> str:
+    """
+    Used to assign labels by converting raw tick values to a split, timestamped string value.
+    """
+    try:
+        idx = int(tick_val)
+        # Prevent getting negative index. iloc has unexpected behavior with negative values.
+        ts = str(df.iloc[idx]["timestamp"]).split(" ")[1] if idx >= 0 else ""
+    except (ValueError, IndexError):
+        ts = ""
+    return ts
+
+
 def plot_chat_frequency(
     chat_files: List[str],
     output_csv: str,
@@ -156,32 +172,121 @@ def plot_chat_frequency(
         annotate_chat_data(file, freq, patterns, ignorecase=ignorecase)
         for file in chat_files
     )
-    # Facet plot by name of stream VOD.
-    g = sns.FacetGrid(
-        df_message_frequency,
-        col="name",
-        col_wrap=2,
-        height=5.0,
-        aspect=2.0,
-    )
-    # Create lineplot with timestamp on x and message count on y.
-    # Hue of line is the pattern.
-    g.map_dataframe(
-        sns.lineplot,
-        x="timestamp",
-        y="counts",
-        hue="desc",
-    )
-    g.add_legend()
 
-    # Set tick labels for all axes.
-    for _, ax in g.axes_dict.items():
-        label_formatter = ticker.FuncFormatter(
-            lambda x, _: pd.to_datetime(x, unit="d").strftime("%H:%M:%S")
+    # Set default is peak to be False.
+    df_message_frequency["is_peak"] = False
+
+    # Number of vods.
+    vods = df_message_frequency["name"].unique()
+    # Set required number of rows based on number of vods.
+    req_n_rows = max(1, int(len(vods) / SUBPLOTS_PER_COL))
+    fig_height = req_n_rows * SUBPLOT_HEIGHT
+
+    # Aspect ratio of 2.0.
+    fig = plt.figure(figsize=(fig_height * 2, fig_height))
+    # Get current figure and remove axis labels.
+    ax: plt.Axes = plt.gca()
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.title("Chat Peak Frequencies", fontsize=10 * req_n_rows, y=1.03)
+
+    for i, vod in enumerate(vods, 1):
+        # Reset index on df_vod so can correctly access rows.
+        df_vod = (
+            df_message_frequency.loc[df_message_frequency["name"] == vod]
+            .reset_index(drop=True)
+            .drop(columns=["name"])
         )
-        ax.xaxis.set_major_formatter(label_formatter)
-        ax.set_xticks(ticks=ax.get_xticks(), labels=ax.get_xticklabels(), rotation=50)
+        # Add a subplot and set current to ith position.
+        subplot: plt.Axes = fig.add_subplot(
+            req_n_rows,
+            # Set number of columns to resize if less than 4.
+            4 if len(vods) > 4 else len(vods),
+            i,
+        )
 
+        unique_patterns = df_vod["desc"].unique()
+        # Get unique colors for each pattern.
+        colors = plt.cm.jet(np.linspace(0, 1, len(unique_patterns)))
+
+        line_plots = []
+        for pattern, color in zip(unique_patterns, colors):
+            # Grab rows that match pattern.
+            df_pattern_cnts = df_vod.loc[df_vod["desc"] == pattern].reset_index(
+                drop=True
+            )
+
+            # Set prominence threshold of peak as difference between max and value at 90th percentile of counts.
+            # Tested by hand. Allowed good number of peaks without including noise.
+            # https://en.wikipedia.org/wiki/Topographic_prominence
+            # https://stackoverflow.com/a/52612432
+            prominence_threshold = df_pattern_cnts["counts"].max() - df_pattern_cnts[
+                "counts"
+            ].quantile(0.9)
+
+            # Find peaks with prominence threshold.
+            peaks, _ = find_peaks(
+                df_pattern_cnts["counts"], prominence=prominence_threshold
+            )
+
+            # Add peak pts for pattern.
+            subplot.plot(
+                peaks,
+                df_pattern_cnts.loc[peaks]["counts"],
+                color=color,
+                marker="o",
+                linestyle="None",
+            )
+            # Add line plot for pattern.
+            (line_plot,) = subplot.plot(
+                df_pattern_cnts.index, df_pattern_cnts["counts"], color=color
+            )
+            line_plots.append(line_plot)
+
+            # Label coordinates removing date from timestamp.
+            for x, y in zip(peaks, df_pattern_cnts.iloc[peaks]["counts"]):
+                timestamp = df_vod.iloc[x]["timestamp"]
+
+                # Set original peak to True.
+                same_timestamp = df_message_frequency["timestamp"] == timestamp
+                same_pattern = df_message_frequency["desc"] == pattern
+                same_cnts = df_message_frequency["counts"] == y
+                is_same_peak = (same_timestamp) & (same_pattern) & (same_cnts)
+                df_message_frequency.loc[is_same_peak, "is_peak"] = True
+
+                # Get time from timestamp as %H:%M:%S and annotate point.
+                timestamp = str(timestamp).split(" ")[1]
+                plt.annotate(
+                    xy=(x, y),
+                    text=timestamp,
+                    color=color,
+                    xytext=(0, 5),
+                    textcoords="offset points",
+                )
+
+            label_formatter = ticker.FuncFormatter(
+                lambda x, _: tick_lbl_setter(x, df_pattern_cnts)
+            )
+            subplot.xaxis.set_major_formatter(label_formatter)
+            subplot.set_xticks(
+                ticks=subplot.get_xticks(),
+                labels=subplot.get_xticklabels(),
+                rotation=50,
+            )
+
+        # Add VOD title.
+        subplot.set_title(vod)
+        # Add legend to outside left position of subplot.
+        # We need to pass in saved line plots as we don't want to add peaks to legend.
+        subplot.legend(
+            line_plots,
+            unique_patterns,
+            loc="upper left",
+            bbox_to_anchor=(1.02, 1),
+        )
+
+    # Save figure and data.
     plt.savefig(output_plot)
 
     df_message_frequency.to_csv(output_csv, index=False)

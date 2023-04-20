@@ -151,8 +151,6 @@ checkpoint get_vod_chat:
     threads: workflow.cores
     conda:
         "../envs/twitch.yaml"
-    params:
-        chat_fmt=TWITCH_CFG["chat_format"],
     log:
         "logs/twitch/get_{channel}_vod_chat.log",
     benchmark:
@@ -162,6 +160,5 @@ checkpoint get_vod_chat:
         python workflow/scripts/get_vod_chat.py \
         -i {input.vod_info} \
         -o {output.vod_chat_dir} \
-        -f {params.chat_fmt} \
         -p {threads} &> {log}
         """

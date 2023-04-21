@@ -16,7 +16,7 @@ twitch:
 
   vod:
     type: "archive"
-    top_n: null
+    top_n: 5
 
 analysis:
   paths:
@@ -40,15 +40,18 @@ analysis:
     bttv_channel:
       include_all: true
     twitch_channel:
-      include_all: true
+      include_all: false
     bttv_global:
-      include_all: true
+      include_all: false
       # whitelist:
     twitch_global:
-      include_all: true
+      include_all: false
 
   top_words:
     ignore_emotes: true
 
   # users:
   # words_per_interval
+  # class_user_interval # Stacked line plot.
+  # class_dist_users
+  #

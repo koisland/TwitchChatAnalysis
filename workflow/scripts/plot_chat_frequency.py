@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+import math
 import base64
 import pprint
 import argparse
@@ -15,7 +16,7 @@ from typing import Dict, Any, List
 
 
 SUBPLOT_HEIGHT = 7.5
-SUBPLOTS_PER_COL = 4
+SUBPLOTS_PER_ROW = 4
 
 
 class KeyValStringParser(argparse.Action):
@@ -182,7 +183,9 @@ def plot_chat_frequency(
     # Number of vods.
     vods = df_message_frequency["name"].unique()
     # Set required number of rows based on number of vods.
-    req_n_rows = max(1, int(len(vods) / SUBPLOTS_PER_COL))
+    req_n_rows = math.ceil(len(vods) / SUBPLOTS_PER_ROW)
+    # Set number of columns to resize if less than 4.
+    num_cols = 4 if len(vods) > 4 else len(vods)
     fig_height = req_n_rows * SUBPLOT_HEIGHT
 
     # Aspect ratio of 2.0.
@@ -204,8 +207,7 @@ def plot_chat_frequency(
         # Add a subplot and set current to ith position.
         subplot: plt.Axes = fig.add_subplot(
             req_n_rows,
-            # Set number of columns to resize if less than 4.
-            4 if len(vods) > 4 else len(vods),
+            num_cols,
             i,
         )
 

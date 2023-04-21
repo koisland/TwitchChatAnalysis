@@ -3,16 +3,13 @@ import sys
 import base64
 import pprint
 import argparse
-import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd  # type: ignore
 import seaborn as sns  # type: ignore
 
 from collections import Counter
-from typing import Set, List, Tuple, Optional, Dict
-from matplotlib.axes import Axes  # type: ignore
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox  # type: ignore
+from typing import Set, List, Optional, Dict
 
-from plot_helpers import label_b64_files
+from plot_helpers import label_b64_images, add_image_annot
 
 sns.set_theme(style="whitegrid")
 
@@ -57,21 +54,6 @@ def count_words(chat_tsv: str, word_set: Set[str]) -> pd.DataFrame:
                 "count": word_count.values(),
             }
         )
-
-
-def add_image_annot(
-    coord: Tuple[int, int], img_path: str, img_scale: float, ax: Axes
-) -> None:
-    """
-    Add image annotation to
-    Adapted from: https://stackoverflow.com/a/44264051
-    """
-    img = plt.imread(img_path)
-    im = OffsetImage(img, zoom=img_scale)
-    im.image.axes = ax
-
-    ab = AnnotationBbox(im, xy=coord, xycoords="data", pad=0)
-    ax.add_artist(ab)
 
 
 def main() -> int:
@@ -140,8 +122,8 @@ def plot_vod_emotes(
     # Create emote set and name to filename match.
     emote_to_file: Dict[str, str] = {}
     for emote_dir in emote_dirs:
-        labeled_b64_files = label_b64_files(
-            emote_dir, ignore_fnames=emote_blacklist, ignore_ext=(".png", ".gif")
+        labeled_b64_files = label_b64_images(
+            emote_dir, ignore_fnames=emote_blacklist, keep_ext=(".png", ".gif")
         )
         emote_to_file = emote_to_file | labeled_b64_files
 
@@ -200,10 +182,10 @@ def plot_vod_emotes(
         emote_path = emote_to_file[lbl.get_text()]
         _, lbl_y = lbl.get_position()
         add_image_annot(
+            ax=cmap.ax_heatmap.axes,
             coord=(0, lbl_y),
             img_path=emote_path,
             img_scale=0.2,
-            ax=cmap.ax_heatmap.axes,
         )
 
     # Rename axis labels.

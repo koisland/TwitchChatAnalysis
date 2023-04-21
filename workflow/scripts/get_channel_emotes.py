@@ -5,7 +5,7 @@ import dotenv  # type: ignore
 from twitchAPI.twitch import Twitch  # type: ignore
 from twitchAPI.helper import first  # type: ignore
 
-from helpers import get_twitch_emotes, get_url_content, get_bttv_emotes
+from twitch_helpers import get_twitch_emotes, get_url_content, get_bttv_emotes
 
 
 async def get_bttv_channel_emotes(twitch_user_id: str, output_dir: str) -> None:

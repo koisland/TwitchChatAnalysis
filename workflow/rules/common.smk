@@ -42,7 +42,7 @@ def get_emote_blacklist(output_emote_dirs: Dict[str, str]) -> List[str]:
             # Add all non-matching files to be blacklisted.
             blacklisted_files.extend(all_emote_paths.difference(found_files))
         elif cfg_emotes[cfg_opt].get("include_all") is False:
-            blacklisted_files.extend(all_emotes)
+            blacklisted_files.extend(all_emote_paths)
 
     return [f'"{os.path.basename(file)}"' for file in blacklisted_files]
 

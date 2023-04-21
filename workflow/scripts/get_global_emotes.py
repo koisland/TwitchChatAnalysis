@@ -4,7 +4,7 @@ import asyncio
 import dotenv  # type: ignore
 from twitchAPI.twitch import Twitch  # type: ignore
 
-from helpers import get_twitch_emotes, get_bttv_global_emotes
+from twitch_helpers import get_twitch_emotes, get_bttv_global_emotes
 
 
 async def main():

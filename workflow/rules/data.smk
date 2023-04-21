@@ -53,7 +53,7 @@ rule data_all:
         ),
 
 
-checkpoint get_channel_info:
+checkpoint get_channel_emotes:
     input:
         twitch_cred=TWITCH_CFG["paths"]["twitch_cred_file"],
     output:
@@ -69,6 +69,26 @@ checkpoint get_channel_info:
         channel_emote_key=os.path.join(
             OUTPUT_DIR, "{channel}", EMOTES_DIR, "twitch", "key.json"
         ),
+    conda:
+        "../envs/twitch.yaml"
+    log:
+        "logs/twitch/get_{channel}_emotes.log",
+    benchmark:
+        "benchmarks/twitch/get_{channel}_emotes.tsv"
+    shell:
+        """
+        python workflow/scripts/get_channel_emotes.py \
+        -i {input.twitch_cred} \
+        -c {wildcards.channel} \
+        --output_emotes_bttv {output.bttv_emote_dir} \
+        --output_emotes_twitch {output.channel_emote_dir} &> {log}
+        """
+
+
+checkpoint get_channel_info:
+    input:
+        twitch_cred=TWITCH_CFG["paths"]["twitch_cred_file"],
+    output:
         vod_info=os.path.join(OUTPUT_DIR, "{channel}", VOD_INFO_FILE),
     conda:
         "../envs/twitch.yaml"
@@ -81,9 +101,7 @@ checkpoint get_channel_info:
         python workflow/scripts/get_channel_info.py \
         -i {input.twitch_cred} \
         -c {wildcards.channel} \
-        --output_vod_info {output.vod_info} \
-        --output_emotes_bttv {output.bttv_emote_dir} \
-        --output_emotes_twitch {output.channel_emote_dir} &> {log}
+        --output_vod_info {output.vod_info} &> {log}
         """
 
 

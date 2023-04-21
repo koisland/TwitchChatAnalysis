@@ -1,4 +1,3 @@
-import csv
 import os
 import sys
 import base64
@@ -15,8 +14,10 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox  # type: ignore
 
 from plot_helpers import label_b64_files
 
-csv.field_size_limit(sys.maxsize)
 sns.set_theme(style="whitegrid")
+
+
+FIELDS = ["timestamp", "badges", "name", "msg"]
 
 
 def count_words(chat_tsv: str, word_set: Set[str]) -> pd.DataFrame:
@@ -24,22 +25,24 @@ def count_words(chat_tsv: str, word_set: Set[str]) -> pd.DataFrame:
     Count words from given word set.
     """
     with open(chat_tsv, "rt") as chat_file:
-        vod_name = os.path.splitext(os.path.basename(chat_tsv))[0]
+        id_vod_name = os.path.splitext(os.path.basename(chat_tsv))[0]
+        id, vod_name = id_vod_name.split("_")
+
         # Try to decode the vodname. Otherwise, use the original name.
+        # Add id to ensure unique, human-readable name.
         try:
-            vod_name = base64.b64decode(vod_name).decode()
+            vod_name = f"{id}_" + base64.b64decode(vod_name).decode()
         except Exception:
             pass
 
-        reader = csv.DictReader(
-            chat_file,
-            fieldnames=["timestamp", "badges", "name", "msg"],
-            delimiter="\t",
-        )
-
         # Create counter to count words.
         word_count: Counter[int] = Counter()
-        for line in reader:
+
+        for msg in chat_file.readlines():
+            try:
+                line = dict(zip(FIELDS, msg.split("\t", maxsplit=len(FIELDS))))
+            except ValueError:
+                continue
             words = Counter(line["msg"].split(" "))
             # Create set of words in split message and only take words that exist in emote set.
             remove_words = set(words.keys()).difference(word_set)

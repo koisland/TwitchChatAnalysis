@@ -68,10 +68,10 @@ rule plot_chat_frequency:
 rule plot_emote_vod_clustering:
     input:
         vod_chats=rules.plot_chat_frequency.input.chat_file,
-        bttv_channel_emote_dir=lambda wc: checkpoints.get_channel_info.get(
+        bttv_channel_emote_dir=lambda wc: checkpoints.get_channel_emotes.get(
             **wc
         ).output.bttv_emote_dir,
-        twitch_channel_emote_dir=lambda wc: checkpoints.get_channel_info.get(
+        twitch_channel_emote_dir=lambda wc: checkpoints.get_channel_emotes.get(
             **wc
         ).output.channel_emote_dir,
         bttv_global_emote_dir=lambda wc: checkpoints.get_global_emotes.get(

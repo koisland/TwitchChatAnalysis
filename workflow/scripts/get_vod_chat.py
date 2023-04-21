@@ -39,6 +39,9 @@ def extract_twitch_vod_chat(url: str, output_file: str) -> int:
                     else:
                         # Pad with 0's.
                         timestamp = "0" + timestamp
+
+                # Ignore unicode characters.
+                msg_text = msg_text.encode("ascii", "replace").decode(encoding="utf-8")
                 chat_file.write("\t".join([timestamp, badges, names, msg_text]) + "\n")
 
     return 0
@@ -83,10 +86,10 @@ def main() -> int:
                     # Convert title to base64.
                     os.path.join(
                         args.output_dir,
-                        f"{base64.b64encode(str(info['title']).encode()).decode()}.tsv",
+                        f"{id}_{base64.b64encode(str(info['title']).encode()).decode()}.tsv",
                     ),
                 )
-                for _, info in vod_info.items()
+                for id, info in vod_info.items()
             ],
         )
 

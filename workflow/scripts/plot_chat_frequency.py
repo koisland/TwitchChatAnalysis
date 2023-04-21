@@ -108,10 +108,13 @@ def annotate_chat_data(
     *,
     ignorecase: bool = False,
 ) -> pd.DataFrame:
-    b64_fname, _ = os.path.splitext(os.path.basename(chat_file))
-    fname = base64.b64decode(b64_fname).decode()
+    id_b64_fname, _ = os.path.splitext(os.path.basename(chat_file))
+    _, b64_vod_name = id_b64_fname.split("_")
 
-    df = pd.read_csv(chat_file, delimiter="\t")
+    fname = base64.b64decode(b64_vod_name).decode()
+
+    # Skip bad lines and emit warning.
+    df = pd.read_csv(chat_file, delimiter="\t", on_bad_lines="warn")
 
     # Get timestamps and floor them to seconds to reduce number of points.
     df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S").dt.floor(

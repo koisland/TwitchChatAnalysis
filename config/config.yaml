@@ -1,5 +1,5 @@
 paths:
-  output_dir: "output_test"
+  output_dir: "output"
 
 twitch:
   paths:
@@ -16,7 +16,7 @@ twitch:
 
   vod:
     type: "archive"
-    top_n: 3
+    top_n: null
 
 analysis:
   paths:
@@ -34,6 +34,7 @@ analysis:
       omegalul: "OMEGALUL"
       plus2: "\\+2"
       minus2: "\\-2"
+      ohno: "D:|monkaW|monkaS"
 
   emotes:
     bttv_channel:

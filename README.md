@@ -3,11 +3,17 @@
 
 Analyze Twitch chat and produce visuals for VODs from a given channel.
 
-<p float="left">
-  <img align="center" src="./docs/plots/chat_freq_peaks.png" width="33%" />
-  <img align="center" src="./docs/plots/treemap.png" width="33%" />
-  <img align="center" src="./docs/plots/vods_emote_clustermap.png" height="500" />
-</p>
+<table>
+  <tr>
+    <td>
+      <img align="center" src="./docs/plots/chat_freq_peaks.png" width="80%" />
+      <img align="center" src="./docs/plots/treemap.png" width="80%" />
+    </td>
+    <td>
+        <img align="center" src="./docs/plots/vods_emote_clustermap.png" width="50%" />
+    </td>
+  </tr>
+</table>
 
 > EDA of [Jerma985](https://www.twitch.tv/jerma985) VODs.
 >
